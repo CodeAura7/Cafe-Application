@@ -11,7 +11,7 @@ import {TablesScreen} from '../screens/TablesScreen';
 import {ProductsScreen} from '../screens/ProductsScreen';
 import type {RootStackParamList} from './types';
 
-enableScreens(false);
+enableScreens();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
