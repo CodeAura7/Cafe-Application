@@ -1,5 +1,5 @@
 import {executeSql} from '../database';
-import type {CreateProductInput, Product, ProductId, UpdateProductInput} from '../types';
+import type {CreateProductInput, Product, ProductCategory, ProductId, UpdateProductInput} from '../types';
 
 import {productFromRow} from './rowMappers';
 
@@ -14,13 +14,20 @@ function assertProductInput(name: string, price: number): void {
   }
 }
 
+function assertCategory(category: ProductCategory): void {
+  if (!['FOOD', 'BEVERAGES', 'DESSERT', 'OTHERS'].includes(category)) {
+    throw new Error('Product category is invalid.');
+  }
+}
+
 export async function createProduct(input: CreateProductInput): Promise<Product> {
   assertProductInput(input.name, input.price);
+  assertCategory(input.category);
   const timestamp = now();
   const result = await executeSql(
-    `INSERT INTO PRODUCTS (name, price, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    [input.name.trim(), input.price, input.isActive === false ? 0 : 1, timestamp, timestamp],
+    `INSERT INTO PRODUCTS (name, price, category, is_active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [input.name.trim(), input.price, input.category, input.isActive === false ? 0 : 1, timestamp, timestamp],
   );
   return requireProduct(result.insertId as ProductId);
 }
@@ -38,9 +45,11 @@ export async function requireProduct(id: ProductId): Promise<Product> {
   return product;
 }
 
-export async function listProducts(activeOnly = false): Promise<Product[]> {
+export async function listProducts(activeOnly = false, category?: ProductCategory): Promise<Product[]> {
+  const clauses = [activeOnly ? 'is_active = 1' : '', category ? 'category = ?' : ''].filter(Boolean);
   const result = await executeSql(
-    `SELECT * FROM PRODUCTS${activeOnly ? ' WHERE is_active = 1' : ''} ORDER BY name COLLATE NOCASE`,
+    `SELECT * FROM PRODUCTS${clauses.length ? ` WHERE ${clauses.join(' AND ')}` : ''} ORDER BY name COLLATE NOCASE`,
+    category ? [category] : [],
   );
   return Array.from({length: result.rows.length}, (_, index) => productFromRow(result.rows.item(index)));
 }
@@ -49,13 +58,15 @@ export async function updateProduct(id: ProductId, input: UpdateProductInput): P
   const existing = await requireProduct(id);
   const name = input.name === undefined ? existing.name : input.name.trim();
   const price = input.price === undefined ? existing.price : input.price;
+  const category = input.category ?? existing.category;
   assertProductInput(name, price);
+  assertCategory(category);
 
   await executeSql(
     `UPDATE PRODUCTS
-     SET name = ?, price = ?, is_active = ?, updated_at = ?
+     SET name = ?, price = ?, category = ?, is_active = ?, updated_at = ?
      WHERE id = ?`,
-    [name, price, input.isActive === undefined ? (existing.isActive ? 1 : 0) : input.isActive ? 1 : 0, now(), id],
+    [name, price, category, input.isActive === undefined ? (existing.isActive ? 1 : 0) : input.isActive ? 1 : 0, now(), id],
   );
 
   return requireProduct(id);

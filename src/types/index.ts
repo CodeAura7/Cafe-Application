@@ -2,7 +2,7 @@ export type ProductId = number;
 export type TableId = number;
 export type OrderId = number;
 export type OrderItemId = number;
-
+export type ProductCategory = 'FOOD' | 'BEVERAGES' | 'DESSERT' | 'OTHERS';
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED';
 export type OrderStatus = 'ACTIVE' | 'COMPLETED';
 
@@ -10,6 +10,7 @@ export interface Product {
   id: ProductId;
   name: string;
   price: number;
+  category: ProductCategory;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -47,12 +48,14 @@ export interface OrderItem {
 export interface CreateProductInput {
   name: string;
   price: number;
+  category: ProductCategory;
   isActive?: boolean;
 }
 
 export interface UpdateProductInput {
   name?: string;
   price?: number;
+  category?: ProductCategory;
   isActive?: boolean;
 }
 
@@ -87,4 +90,23 @@ export interface CreateOrderItemInput {
 
 export interface UpdateOrderItemInput {
   quantity: number;
+}
+
+export interface CartItem {
+  productId: ProductId;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+}
+
+export interface BillHistoryItem extends Order {
+  tableNumber: number | null;
+}
+
+export interface SalesReport {
+  billCount: number;
+  grossSales: number;
+  discounts: number;
+  finalSales: number;
+  products: Array<{name: string; quantity: number; revenue: number}>;
 }

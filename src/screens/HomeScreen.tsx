@@ -14,6 +14,7 @@ export function HomeScreen({navigation}: Props): React.JSX.Element {
       <MenuButton label="Tables" onPress={() => navigation.navigate('Tables')} />
       <MenuButton label="Bill History" onPress={() => navigation.navigate('BillHistory')} />
       <MenuButton label="Day End Report" onPress={() => navigation.navigate('DayEndReport')} />
+      <MenuButton label="Products / Menu" onPress={() => navigation.navigate('Products')} />
     </View>
   );
 }

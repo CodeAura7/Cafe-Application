@@ -1,6 +1,6 @@
 import type {SqlStatement} from './index';
 
-export const LATEST_SCHEMA_VERSION = 1;
+export const LATEST_SCHEMA_VERSION = 2;
 
 export const migrations: Record<number, readonly SqlStatement[]> = {
   1: [
@@ -57,4 +57,6 @@ export const migrations: Record<number, readonly SqlStatement[]> = {
     {sql: 'CREATE INDEX IF NOT EXISTS order_items_order_id ON ORDER_ITEMS(order_id)'},
     {sql: 'CREATE INDEX IF NOT EXISTS orders_status_created_at ON ORDERS(status, created_at)'},
   ],
+  // Kept separate from version 1 so existing installations migrate safely.
+  2: [{sql: "ALTER TABLE PRODUCTS ADD COLUMN category TEXT NOT NULL DEFAULT 'OTHERS' CHECK (category IN ('FOOD', 'BEVERAGES', 'DESSERT', 'OTHERS'))"}],
 };

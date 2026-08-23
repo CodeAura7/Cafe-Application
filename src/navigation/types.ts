@@ -1,7 +1,8 @@
 export type RootStackParamList = {
   Home: undefined;
-  NewOrder: undefined;
+  NewOrder: {tableId?: number; activeOrderId?: number} | undefined;
   Tables: undefined;
   BillHistory: undefined;
   DayEndReport: undefined;
+  Products: undefined;
 };

@@ -9,6 +9,7 @@ export function productFromRow(row: Row): Product {
     id: asNumber(row.id),
     name: String(row.name),
     price: asNumber(row.price),
+    category: String(row.category) as Product['category'],
     isActive: asNumber(row.is_active) === 1,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
