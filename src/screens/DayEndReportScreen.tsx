@@ -1,27 +1,21 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
+import type {RootStackParamList} from '../navigation/types';
 import type {SalesReport} from '../types';
 import {getSalesReport} from '../repositories/reportsRepository';
+import {isoDate, toDateRangeBounds as range} from '../utils/dateRange';
 
-const isoDate = (date: Date) =>
-  date.toISOString().slice(0, 10);
+type Props = NativeStackScreenProps<RootStackParamList, 'DayEndReport'>;
 
-const range = (from: string, to: string) => ({
-  from: new Date(`${from}T00:00:00`).toISOString(),
-  to: new Date(
-    new Date(`${to}T00:00:00`).getTime() + 86400000,
-  ).toISOString(),
-});
-
-export function DayEndReportScreen(): React.JSX.Element {
+export function DayEndReportScreen({navigation}: Props): React.JSX.Element {
   const today = isoDate(new Date());
   const yesterday = isoDate(
     new Date(Date.now() - 86400000),
@@ -116,31 +110,15 @@ export function DayEndReportScreen(): React.JSX.Element {
             </Text>
           </View>
 
-          <Text style={styles.heading}>
-            Product-wise sales
-          </Text>
-
-          <FlatList
-            data={report.products}
-            keyExtractor={item => item.name}
-            ListEmptyComponent={
-              <Text style={styles.text}>
-                No completed sales in this range.
-              </Text>
-            }
-            renderItem={({item}) => (
-              <View style={styles.product}>
-                <Text style={styles.productName}>
-                  {item.name}
-                </Text>
-
-                <Text style={styles.text}>
-                  Qty {item.quantity} · ₹
-                  {item.revenue.toFixed(2)}
-                </Text>
-              </View>
-            )}
-          />
+          <Pressable
+            style={styles.productWiseButton}
+            onPress={() =>
+              navigation.navigate('ProductSales', {from, to})
+            }>
+            <Text style={styles.productWiseButtonText}>
+              Product-wise Sales
+            </Text>
+          </Pressable>
         </>
       )}
     </View>
@@ -205,22 +183,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  heading: {
-    color: '#111827',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 7,
-  },
-
-  product: {
-    backgroundColor: '#fff',
+  productWiseButton: {
+    alignItems: 'center',
+    backgroundColor: '#1d4ed8',
     borderRadius: 7,
-    marginBottom: 6,
-    padding: 11,
+    padding: 13,
   },
 
-  productName: {
-    color: '#111827',
+  productWiseButtonText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '700',
   },
 });

@@ -1,5 +1,5 @@
 import {executeSql} from '../database';
-import type {BillHistoryItem, SalesReport} from '../types';
+import type {BillHistoryItem, ProductCategory, SalesReport} from '../types';
 import {orderFromRow} from './rowMappers';
 
 const rows = (result: Awaited<ReturnType<typeof executeSql>>) => Array.from({length: result.rows.length}, (_, i) => result.rows.item(i));
@@ -20,4 +20,35 @@ export async function getSalesReport(from: string, to: string): Promise<SalesRep
     GROUP BY ORDER_ITEMS.product_name_snapshot ORDER BY revenue DESC`, [from, to]);
   const total = totals.rows.item(0);
   return {billCount: Number(total.bill_count), grossSales: Number(total.gross_sales), discounts: Number(total.discounts), finalSales: Number(total.final_sales), products: rows(productRows).map(row => ({name: String(row.name), quantity: Number(row.quantity), revenue: Number(row.revenue)}))};
+}
+
+/**
+ * Product-wise sales for a date range, optionally filtered by the product's
+ * current category. Category is not part of the ORDER_ITEMS snapshot (only
+ * name and price are, per the historical-data rule), so this joins PRODUCTS
+ * by id to read its current category. Used by the Product-wise Sales screen;
+ * getSalesReport() above is left untouched so existing report totals keep
+ * working exactly as before.
+ */
+export async function getProductSalesReport(
+  from: string,
+  to: string,
+  category?: ProductCategory,
+): Promise<SalesReport['products']> {
+  const categoryClause = category ? 'AND PRODUCTS.category = ?' : '';
+  const params = category ? [from, to, category] : [from, to];
+
+  const result = await executeSql(
+    `SELECT ORDER_ITEMS.product_name_snapshot AS name, SUM(ORDER_ITEMS.quantity) AS quantity,
+       SUM(ORDER_ITEMS.item_total) AS revenue
+     FROM ORDER_ITEMS
+     JOIN ORDERS ON ORDERS.id = ORDER_ITEMS.order_id
+     JOIN PRODUCTS ON PRODUCTS.id = ORDER_ITEMS.product_id
+     WHERE ORDERS.status = 'COMPLETED' AND ORDERS.created_at >= ? AND ORDERS.created_at < ? ${categoryClause}
+     GROUP BY ORDER_ITEMS.product_name_snapshot
+     ORDER BY revenue DESC`,
+    params,
+  );
+
+  return rows(result).map(row => ({name: String(row.name), quantity: Number(row.quantity), revenue: Number(row.revenue)}));
 }
