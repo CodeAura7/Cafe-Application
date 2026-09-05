@@ -10,7 +10,7 @@ export function PrinterSettingsScreen(): React.JSX.Element {
     setBusy(true);
     try {
       await printerService.testPrint();
-      Alert.alert('Test print sent', 'The mock printer received the test print request.');
+      Alert.alert('Test print sent', 'The printer accepted the test print request.');
     } catch (error) {
       Alert.alert('Test print failed', error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -24,12 +24,11 @@ export function PrinterSettingsScreen(): React.JSX.Element {
 
       <Text style={styles.text}>
         This café&apos;s tablet is from TBS Electronics and has a built-in thermal receipt printer. The
-        exact printer connection method (Bluetooth, USB, or manufacturer SDK) has not been confirmed yet,
-        so the app is currently using a mock printer through the existing PrinterService abstraction.
+        exact USB printer model, Vendor/Product IDs, and manufacturer SDK or command protocol have not been confirmed yet.
       </Text>
 
       <Text style={styles.text}>
-        Once the connection method is confirmed, the real printer integration can be added behind
+        Once the connection method is confirmed, the real USB integration can be added behind
         PrinterService without changing the rest of the app.
       </Text>
 

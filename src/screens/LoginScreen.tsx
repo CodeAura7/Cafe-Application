@@ -1,15 +1,18 @@
 import React, {useState} from 'react';
 import {Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
 import {useAuth} from '../auth/AuthContext';
+import type {RootStackParamList} from '../navigation/types';
 
-export function LoginScreen(): React.JSX.Element {
+type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+export function LoginScreen({navigation}: Props): React.JSX.Element {
   const {login} = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const submit = () => {
-    const success = login(username, password);
+  const submit = async () => {
+    const success = await login(username, password);
     if (!success) {
       Alert.alert('Login failed', 'Incorrect username or password.');
     }
@@ -39,12 +42,13 @@ export function LoginScreen(): React.JSX.Element {
         secureTextEntry
         value={password}
         onChangeText={setPassword}
-        onSubmitEditing={submit}
+        onSubmitEditing={() => void submit()}
       />
 
-      <Pressable style={styles.button} onPress={submit}>
+      <Pressable style={styles.button} onPress={() => void submit()}>
         <Text style={styles.buttonText}>Login</Text>
       </Pressable>
+      <Pressable onPress={() => navigation.navigate('ForgotPassword')}><Text style={styles.forgot}>Forgot Password?</Text></Pressable>
     </View>
   );
 }
@@ -90,4 +94,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  forgot: {color: '#1d4ed8', marginTop: 18, textAlign: 'center'},
 });

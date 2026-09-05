@@ -7,6 +7,8 @@ import {BillHistoryScreen} from '../screens/BillHistoryScreen';
 import {DayEndReportScreen} from '../screens/DayEndReportScreen';
 import {HomeScreen} from '../screens/HomeScreen';
 import {LoginScreen} from '../screens/LoginScreen';
+import {AccountSetupScreen} from '../screens/AccountSetupScreen';
+import {ForgotPasswordScreen} from '../screens/ForgotPasswordScreen';
 import {NewOrderScreen} from '../screens/NewOrderScreen';
 import {PrinterSettingsScreen} from '../screens/PrinterSettingsScreen';
 import {ProductSalesScreen} from '../screens/ProductSalesScreen';
@@ -21,7 +23,9 @@ enableScreens();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function AppNavigator(): React.JSX.Element {
-  const {isAuthenticated} = useAuth();
+  const {isAuthenticated, isReady, hasAccount} = useAuth();
+
+  if (!isReady) return <></>;
 
   return (
     <NavigationContainer>
@@ -80,12 +84,11 @@ export function AppNavigator(): React.JSX.Element {
               options={{title: 'Printer'}}
             />
           </Stack.Group>
-        ) : (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{headerShown: false}}
-          />
+        ) : hasAccount ? <Stack.Group>
+          <Stack.Screen name="Login" component={LoginScreen} options={{headerShown: false}} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{title: 'Reset Password'}} />
+        </Stack.Group> : (
+          <Stack.Screen name="AccountSetup" component={AccountSetupScreen} options={{title: 'Set up CafePOS'}} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

@@ -1,6 +1,6 @@
 import type {SqlStatement} from './index';
 
-export const LATEST_SCHEMA_VERSION = 2;
+export const LATEST_SCHEMA_VERSION = 4;
 
 export const migrations: Record<number, readonly SqlStatement[]> = {
   1: [
@@ -59,4 +59,38 @@ export const migrations: Record<number, readonly SqlStatement[]> = {
   ],
   // Kept separate from version 1 so existing installations migrate safely.
   2: [{sql: "ALTER TABLE PRODUCTS ADD COLUMN category TEXT NOT NULL DEFAULT 'OTHERS' CHECK (category IN ('FOOD', 'BEVERAGES', 'DESSERT', 'OTHERS'))"}],
+  // Preserve the category alongside the existing name and price snapshots.  Old
+  // items receive the category currently attached to their product; new items
+  // are permanently independent of later product edits.
+  3: [
+    {
+      sql: "ALTER TABLE ORDER_ITEMS ADD COLUMN category_snapshot TEXT NOT NULL DEFAULT 'OTHERS' CHECK (category_snapshot IN ('FOOD', 'BEVERAGES', 'DESSERT', 'OTHERS'))",
+    },
+    {
+      sql: `UPDATE ORDER_ITEMS
+            SET category_snapshot = COALESCE(
+              (SELECT category FROM PRODUCTS WHERE PRODUCTS.id = ORDER_ITEMS.product_id),
+              'OTHERS'
+            )`,
+    },
+    {sql: 'CREATE INDEX IF NOT EXISTS order_items_category_snapshot ON ORDER_ITEMS(category_snapshot)'},
+  ],
+  4: [
+    {
+      sql: `CREATE TABLE IF NOT EXISTS APP_ACCOUNT (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        user_id TEXT NOT NULL UNIQUE,
+        password_salt TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        question_one TEXT NOT NULL,
+        answer_one_salt TEXT NOT NULL,
+        answer_one_hash TEXT NOT NULL,
+        question_two TEXT NOT NULL,
+        answer_two_salt TEXT NOT NULL,
+        answer_two_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+    },
+  ],
 };

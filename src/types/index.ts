@@ -20,6 +20,8 @@ export interface CafeTable {
   id: TableId;
   tableNumber: number;
   status: TableStatus;
+  activeOrderId: OrderId | null;
+  customerName: string | null;
 }
 
 export interface Order {
@@ -41,6 +43,7 @@ export interface OrderItem {
   productId: ProductId;
   productNameSnapshot: string;
   unitPriceSnapshot: number;
+  categorySnapshot: ProductCategory;
   quantity: number;
   itemTotal: number;
 }
@@ -96,6 +99,7 @@ export interface CartItem {
   productId: ProductId;
   name: string;
   unitPrice: number;
+  category: ProductCategory;
   quantity: number;
 }
 
@@ -108,5 +112,13 @@ export interface SalesReport {
   grossSales: number;
   discounts: number;
   finalSales: number;
-  products: Array<{name: string; quantity: number; revenue: number}>;
+  products: ProductSalesRow[];
+}
+
+export interface ProductSalesRow {
+  category: ProductCategory;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  revenue: number;
 }

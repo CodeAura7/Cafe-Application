@@ -3,28 +3,23 @@ import {FlatList, Pressable, StyleSheet, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
 import type {RootStackParamList} from '../navigation/types';
-import type {ProductCategory, SalesReport} from '../types';
+import type {ProductSalesRow} from '../types';
 import {getProductSalesReport} from '../repositories/reportsRepository';
 import {toDateRangeBounds} from '../utils/dateRange';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductSales'>;
 
-const categories: Array<ProductCategory | 'ALL'> = ['ALL', 'FOOD', 'BEVERAGES', 'DESSERT', 'OTHERS'];
-
-const label = (category: ProductCategory | 'ALL') =>
-  category === 'ALL' ? 'All' : category[0] + category.slice(1).toLowerCase();
-
 export function ProductSalesScreen({route}: Props): React.JSX.Element {
   const {from, to} = route.params;
-  const [filter, setFilter] = useState<ProductCategory | 'ALL'>('ALL');
-  const [products, setProducts] = useState<SalesReport['products']>([]);
+  const [selectedProduct, setSelectedProduct] = useState('ALL');
+  const [products, setProducts] = useState<ProductSalesRow[]>([]);
 
   const load = useCallback(async () => {
     const bounds = toDateRangeBounds(from, to);
     setProducts(
-      await getProductSalesReport(bounds.from, bounds.to, filter === 'ALL' ? undefined : filter),
+      await getProductSalesReport(bounds.from, bounds.to),
     );
-  }, [from, to, filter]);
+  }, [from, to]);
 
   useEffect(() => {
     void load();
@@ -36,29 +31,37 @@ export function ProductSalesScreen({route}: Props): React.JSX.Element {
         {from === to ? from : `${from} to ${to}`}
       </Text>
 
-      <View style={styles.filters}>
-        {categories.map(item => (
+      <FlatList
+        horizontal
+        contentContainerStyle={styles.filters}
+        data={['ALL', ...Array.from(new Set(products.map(item => item.name))).sort((a, b) => a.localeCompare(b))]}
+        keyExtractor={item => item}
+        renderItem={({item}) => (
           <Pressable
             key={item}
-            style={[styles.filter, filter === item && styles.selected]}
-            onPress={() => setFilter(item)}>
-            <Text style={styles.text}>{label(item)}</Text>
+            style={[styles.filter, selectedProduct === item && styles.selected]}
+            onPress={() => setSelectedProduct(item)}>
+            <Text style={styles.text}>{item === 'ALL' ? 'All Products' : item}</Text>
           </Pressable>
-        ))}
+        )}
+        showsHorizontalScrollIndicator={false}
+      />
+
+      <View style={[styles.product, styles.header]}>
+        <Text style={[styles.productName, styles.nameColumn]}>Product</Text>
+        <Text style={styles.column}>Category</Text><Text style={styles.column}>Qty</Text><Text style={styles.column}>Unit Price</Text><Text style={styles.column}>Total</Text>
       </View>
 
       <FlatList
-        data={products}
-        keyExtractor={item => item.name}
+        data={selectedProduct === 'ALL' ? products : products.filter(item => item.name === selectedProduct)}
+        keyExtractor={item => `${item.name}-${item.category}-${item.unitPrice}`}
         ListEmptyComponent={
           <Text style={styles.text}>No completed sales for this range.</Text>
         }
         renderItem={({item}) => (
           <View style={styles.product}>
-            <Text style={styles.productName}>{item.name}</Text>
-            <Text style={styles.text}>
-              Qty {item.quantity} · ₹{item.revenue.toFixed(2)}
-            </Text>
+            <Text style={[styles.productName, styles.nameColumn]}>{item.name}</Text>
+            <Text style={styles.column}>{item.category}</Text><Text style={styles.column}>{item.quantity}</Text><Text style={styles.column}>₹{item.unitPrice.toFixed(2)}</Text><Text style={styles.column}>₹{item.revenue.toFixed(2)}</Text>
           </View>
         )}
       />
@@ -84,7 +87,6 @@ const styles = StyleSheet.create({
 
   filters: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 7,
     marginBottom: 12,
   },
@@ -103,9 +105,12 @@ const styles = StyleSheet.create({
   },
 
   product: {
+    alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 7,
     marginBottom: 6,
+    flexDirection: 'row',
+    gap: 6,
     padding: 11,
   },
 
@@ -113,4 +118,7 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '700',
   },
+  header: {backgroundColor: '#e2e8f0'},
+  nameColumn: {flex: 1.5},
+  column: {color: '#111827', flex: 1, fontSize: 12},
 });

@@ -21,6 +21,8 @@ export function tableFromRow(row: Row): CafeTable {
     id: asNumber(row.id),
     tableNumber: asNumber(row.table_number),
     status: String(row.status) as CafeTable['status'],
+    activeOrderId: row.active_order_id == null ? null : asNumber(row.active_order_id),
+    customerName: row.customer_name == null ? null : String(row.customer_name),
   };
 }
 
@@ -46,6 +48,7 @@ export function orderItemFromRow(row: Row): OrderItem {
     productId: asNumber(row.product_id),
     productNameSnapshot: String(row.product_name_snapshot),
     unitPriceSnapshot: asNumber(row.unit_price_snapshot),
+    categorySnapshot: String(row.category_snapshot ?? 'OTHERS') as OrderItem['categorySnapshot'],
     quantity: asNumber(row.quantity),
     itemTotal: asNumber(row.item_total),
   };

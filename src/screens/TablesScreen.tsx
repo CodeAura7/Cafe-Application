@@ -5,11 +5,11 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {useFocusEffect} from '@react-navigation/native';
 import type {CafeTable} from '../types';
 import type {RootStackParamList} from '../navigation/types';
 
@@ -25,7 +25,6 @@ export function TablesScreen({
   navigation,
 }: Props): React.JSX.Element {
   const [tables, setTables] = useState<CafeTable[]>([]);
-  const [customer, setCustomer] = useState('');
 
   const load = useCallback(
     async () => setTables(await listTables()),
@@ -35,6 +34,12 @@ export function TablesScreen({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   const select = async (table: CafeTable) => {
     try {
@@ -55,10 +60,7 @@ export function TablesScreen({
         return;
       }
 
-      const order = await startTableOrder(
-        table.id,
-        customer,
-      );
+      const order = await startTableOrder(table.id);
 
       navigation.navigate('NewOrder', {
         tableId: table.id,
@@ -78,14 +80,6 @@ export function TablesScreen({
 
   return (
     <View style={styles.page}>
-      <TextInput
-        style={styles.input}
-        placeholder="Customer name for the next available table (optional)"
-        placeholderTextColor="#64748b"
-        value={customer}
-        onChangeText={setCustomer}
-      />
-
       <Text style={styles.help}>
         Tap an available table to start an order.
         Occupied tables reopen their active order.
@@ -114,6 +108,10 @@ export function TablesScreen({
                 ? 'Available'
                 : 'Occupied'}
             </Text>
+
+            {!!item.customerName && (
+              <Text style={styles.customer}>{item.customerName}</Text>
+            )}
           </Pressable>
         )}
       />
@@ -125,15 +123,6 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     padding: 12,
-  },
-
-  input: {
-    backgroundColor: '#fff',
-    borderColor: '#94a3b8',
-    borderWidth: 1,
-    borderRadius: 6,
-    color: '#111827',
-    padding: 11,
   },
 
   help: {
@@ -166,4 +155,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: '600',
   },
+
+  customer: {color: '#334155', fontSize: 14, marginTop: 6},
 });

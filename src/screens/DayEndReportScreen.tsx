@@ -119,6 +119,7 @@ export function DayEndReportScreen({navigation}: Props): React.JSX.Element {
               Product-wise Sales
             </Text>
           </Pressable>
+
         </>
       )}
     </View>

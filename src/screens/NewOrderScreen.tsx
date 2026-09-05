@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,8 +23,10 @@ import {
   completeOrder,
   cartItem,
   printerService,
+  assignTable,
   saveActiveOrder,
 } from '../services';
+import {listTables} from '../repositories/tablesRepository';
 
 const categories: Array<ProductCategory | 'ALL'> = [
   'ALL',
@@ -39,8 +42,10 @@ export function NewOrderScreen({
   navigation,
   route,
 }: Props): React.JSX.Element {
-  const activeOrderId = route.params?.activeOrderId;
-  const tableId = route.params?.tableId;
+  const [activeOrderId, setActiveOrderId] = useState(route.params?.activeOrderId);
+  const [tableId, setTableId] = useState(route.params?.tableId);
+  const [availableTables, setAvailableTables] = useState<Array<{id: number; tableNumber: number}>>([]);
+  const [tablePickerVisible, setTablePickerVisible] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] =
@@ -71,6 +76,7 @@ export function NewOrderScreen({
           productId: item.productId,
           name: item.productNameSnapshot,
           unitPrice: item.unitPriceSnapshot,
+          category: item.categorySnapshot,
           quantity: item.quantity,
         })),
       );
@@ -117,6 +123,7 @@ export function NewOrderScreen({
               product.id,
               product.name,
               product.price,
+              product.category,
             ),
           ];
     });
@@ -146,7 +153,16 @@ export function NewOrderScreen({
       });
 
       try {
-        await printerService.printReceipt();
+        await printerService.printReceipt({
+          billNumber: order.orderNumber,
+          date: order.updatedAt,
+          customerName: order.customerName ?? '',
+          tableLabel: tableId ? `Table ${tableId}` : 'Walk-in',
+          items: cart.map(item => ({name: item.name, quantity: item.quantity, unitPrice: item.unitPrice, total: item.unitPrice * item.quantity})),
+          subtotal: order.subtotal,
+          discount: order.discount,
+          finalTotal: order.finalTotal,
+        });
       } catch {
         // Saved orders must remain valid even when printing is unavailable.
       }
@@ -172,10 +188,7 @@ export function NewOrderScreen({
   };
 
   const saveDraft = async () => {
-    if (!activeOrderId) {
-      return;
-    }
-
+    if (!activeOrderId) return;
     try {
       await saveActiveOrder(
         activeOrderId,
@@ -186,7 +199,7 @@ export function NewOrderScreen({
 
       Alert.alert(
         'Order saved',
-        'This table order can now be reopened from Tables.',
+        'This active order has been saved.',
       );
     } catch (error) {
       Alert.alert(
@@ -198,11 +211,34 @@ export function NewOrderScreen({
     }
   };
 
+  const openTablePicker = async () => {
+    if (!activeOrderId) {
+      Alert.alert('Save order first', 'Save this walk-in order before assigning a table.');
+      return;
+    }
+    const tables = await listTables();
+    setAvailableTables(tables.filter(table => table.status === 'AVAILABLE'));
+    setTablePickerVisible(true);
+  };
+
+  const chooseTable = async (id: number, number: number) => {
+    try {
+      if (!activeOrderId) return;
+      await assignTable(activeOrderId, id);
+      setTableId(id);
+      navigation.setParams({tableId: id});
+      setTablePickerVisible(false);
+      Alert.alert('Table assigned', `Table ${number} is now occupied by this order.`);
+    } catch (error) {
+      Alert.alert('Cannot assign table', error instanceof Error ? error.message : 'Please try again.');
+    }
+  };
+
   return (
     <View style={styles.page}>
       <TextInput
         style={styles.input}
-        placeholder="Customer name (optional)"
+        placeholder="Customer name"
         placeholderTextColor="#64748b"
         value={customer}
         onChangeText={setCustomer}
@@ -303,25 +339,36 @@ export function NewOrderScreen({
             Final Total: ₹{total.toFixed(2)}
           </Text>
 
-          {activeOrderId && (
-            <Pressable
-              style={styles.save}
-              onPress={() => void saveDraft()}>
-              <Text style={styles.text}>
-                Save Table Order
-              </Text>
+          {activeOrderId && <Pressable style={styles.save} onPress={() => void saveDraft()}><Text style={styles.text}>Save Table Order</Text></Pressable>}
+
+          {activeOrderId && !tableId && (
+            <Pressable style={styles.assign} onPress={() => void openTablePicker()}>
+              <Text style={styles.assignText}>Assign Table</Text>
             </Pressable>
           )}
 
           <Pressable
             style={styles.complete}
             onPress={() => void finish()}>
-            <Text style={styles.completeText}>
-              Complete Bill
-            </Text>
+            <Text style={styles.completeText}>Complete Bill and Print Bill</Text>
           </Pressable>
         </ScrollView>
       </View>
+
+      <Modal visible={tablePickerVisible} transparent animationType="slide" onRequestClose={() => setTablePickerVisible(false)}>
+        <View style={styles.modal}>
+          <View style={styles.sheet}>
+            <Text style={styles.heading}>Assign an available table</Text>
+            {availableTables.map(table => (
+              <Pressable key={table.id} style={styles.tableChoice} onPress={() => void chooseTable(table.id, table.tableNumber)}>
+                <Text style={styles.text}>Table {table.tableNumber}</Text>
+              </Pressable>
+            ))}
+            {!availableTables.length && <Text style={styles.text}>No tables are available.</Text>}
+            <Pressable style={styles.save} onPress={() => setTablePickerVisible(false)}><Text style={styles.text}>Cancel</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -437,6 +484,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     padding: 12,
   },
+
+  assign: {backgroundColor: '#1d4ed8', borderRadius: 7, marginTop: 8, padding: 12},
+  assignText: {color: '#fff', fontWeight: '700', textAlign: 'center'},
+  modal: {backgroundColor: '#0008', flex: 1, justifyContent: 'flex-end'},
+  sheet: {backgroundColor: '#fff', gap: 8, padding: 20},
+  tableChoice: {borderColor: '#94a3b8', borderRadius: 6, borderWidth: 1, padding: 12},
 
   complete: {
     backgroundColor: '#15803d',

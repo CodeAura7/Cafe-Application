@@ -19,9 +19,9 @@ export async function createOrderItem(input: CreateOrderItemInput): Promise<Orde
 
   const result = await executeSql(
     `INSERT INTO ORDER_ITEMS
-      (order_id, product_id, product_name_snapshot, unit_price_snapshot, quantity, item_total)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [input.orderId, product.id, product.name, product.price, input.quantity, product.price * input.quantity],
+      (order_id, product_id, product_name_snapshot, unit_price_snapshot, category_snapshot, quantity, item_total)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [input.orderId, product.id, product.name, product.price, product.category, input.quantity, product.price * input.quantity],
   );
   return requireOrderItem(result.insertId as OrderItemId);
 }

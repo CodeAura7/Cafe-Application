@@ -30,6 +30,9 @@ export async function getActiveOrderForTable(tableId: TableId): Promise<Order | 
 }
 
 export async function assignTable(orderId: OrderId, tableId: TableId): Promise<void> {
+  const order = await requireOrder(orderId);
+  if (order.status !== 'ACTIVE') throw new Error('Only an active order can be assigned to a table.');
+  if (order.tableId) throw new Error('This order already has a table.');
   const table = await getTableById(tableId);
   if (!table || table.status !== 'AVAILABLE') throw new Error('Select an available table.');
   await runInTransaction([
@@ -69,8 +72,8 @@ export async function completeOrder(input: {
   }
   const orderReference = orderId ? '?' : '(SELECT id FROM ORDERS WHERE order_number = ?)';
   for (const item of input.cart) {
-    statements.push({sql: `INSERT INTO ORDER_ITEMS (order_id, product_id, product_name_snapshot, unit_price_snapshot, quantity, item_total)
-      VALUES (${orderReference}, ?, ?, ?, ?, ?)`, params: orderId ? [orderId, item.productId, item.name, item.unitPrice, item.quantity, item.unitPrice * item.quantity] : [orderNumber, item.productId, item.name, item.unitPrice, item.quantity, item.unitPrice * item.quantity]});
+    statements.push({sql: `INSERT INTO ORDER_ITEMS (order_id, product_id, product_name_snapshot, unit_price_snapshot, category_snapshot, quantity, item_total)
+      VALUES (${orderReference}, ?, ?, ?, ?, ?, ?)`, params: orderId ? [orderId, item.productId, item.name, item.unitPrice, item.category, item.quantity, item.unitPrice * item.quantity] : [orderNumber, item.productId, item.name, item.unitPrice, item.category, item.quantity, item.unitPrice * item.quantity]});
   }
   if (tableId) statements.push({sql: "UPDATE TABLES SET status = 'AVAILABLE' WHERE id = ?", params: [tableId]});
   await runInTransaction(statements);
@@ -91,11 +94,11 @@ export async function saveActiveOrder(orderId: OrderId, customerName: string, di
     {sql: `UPDATE ORDERS SET customer_name = ?, subtotal = ?, discount = ?, final_total = ?, updated_at = ? WHERE id = ? AND status = 'ACTIVE'`, params: [customerName.trim() || null, subtotal, discount, subtotal - discount, now(), orderId]},
     {sql: 'DELETE FROM ORDER_ITEMS WHERE order_id = ?', params: [orderId]},
   ];
-  cart.forEach(item => statements.push({sql: `INSERT INTO ORDER_ITEMS (order_id, product_id, product_name_snapshot, unit_price_snapshot, quantity, item_total)
-    VALUES (?, ?, ?, ?, ?, ?)`, params: [orderId, item.productId, item.name, item.unitPrice, item.quantity, item.unitPrice * item.quantity]}));
+  cart.forEach(item => statements.push({sql: `INSERT INTO ORDER_ITEMS (order_id, product_id, product_name_snapshot, unit_price_snapshot, category_snapshot, quantity, item_total)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`, params: [orderId, item.productId, item.name, item.unitPrice, item.category, item.quantity, item.unitPrice * item.quantity]}));
   await runInTransaction(statements);
 }
 
-export function cartItem(productId: ProductId, name: string, unitPrice: number): CartItem {
-  return {productId, name, unitPrice, quantity: 1};
+export function cartItem(productId: ProductId, name: string, unitPrice: number, category: CartItem['category']): CartItem {
+  return {productId, name, unitPrice, category, quantity: 1};
 }

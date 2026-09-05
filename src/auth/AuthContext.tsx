@@ -1,26 +1,38 @@
-import React, {createContext, useCallback, useContext, useMemo, useState} from 'react';
+import React, {createContext, useCallback, useContext, useEffect, useMemo, useState} from 'react';
 
-import {verifyCredentials} from '../config/authConfig';
+import {hasAccount, verifyLogin} from '../services/LocalAuthService';
+import {initializeDatabase} from '../database';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
-  login: (username: string, password: string) => boolean;
+  isReady: boolean;
+  hasAccount: boolean;
+  refreshAccount: () => Promise<void>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /**
- * Keeps authentication as simple in-memory state: the app always starts on
- * the Login screen, and staying logged in only lasts for the current run of
- * the app. That matches a single-operator, offline counter device where the
- * tablet is expected to be unlocked each time the POS app is opened.
+ * Authentication remains local to this device. Credentials and recovery
+ * answers are salted PBKDF2 hashes held in SQLite, never in source code.
  */
 export function AuthProvider({children}: {children: React.ReactNode}): React.JSX.Element {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [accountExists, setAccountExists] = useState(false);
 
-  const login = useCallback((username: string, password: string): boolean => {
-    const success = verifyCredentials(username, password);
+  const refreshAccount = useCallback(async () => {
+    await initializeDatabase();
+    setAccountExists(await hasAccount());
+    setIsReady(true);
+  }, []);
+
+  useEffect(() => { void refreshAccount(); }, [refreshAccount]);
+
+  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
+    const success = await verifyLogin(username, password);
     if (success) {
       setIsAuthenticated(true);
     }
@@ -29,7 +41,7 @@ export function AuthProvider({children}: {children: React.ReactNode}): React.JSX
 
   const logout = useCallback(() => setIsAuthenticated(false), []);
 
-  const value = useMemo(() => ({isAuthenticated, login, logout}), [isAuthenticated, login, logout]);
+  const value = useMemo(() => ({isAuthenticated, isReady, hasAccount: accountExists, refreshAccount, login, logout}), [isAuthenticated, isReady, accountExists, refreshAccount, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
